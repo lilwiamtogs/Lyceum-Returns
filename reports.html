@@ -18,8 +18,8 @@
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,SOFT,WONK,wght@9..144,20,0,400;9..144,20,0,500&family=Inter:wght@400;500;600;700&display=swap"
     />
-    <link rel="stylesheet" href="site.css?v=19" />
-    <link rel="stylesheet" href="reports.css?v=27" />
+    <link rel="stylesheet" href="site.css?v=22" />
+    <link rel="stylesheet" href="reports.css?v=33" />
   </head>
   <body id="top">
     <header class="site-header">
@@ -49,7 +49,9 @@
             <input id="search" type="search" placeholder="Item or location" />
           </label>
           <div class="view-switch">
-            <button type="button" class="active" data-view="tiles">Tiles</button>
+            <button type="button" class="active" data-view="tiles">
+              Tiles
+            </button>
             <button type="button" data-view="list">List</button>
           </div>
           <button id="refresh" class="refresh" type="button">Refresh</button>
@@ -61,11 +63,15 @@
         <template id="report-card-template">
           <article class="report-card">
             <img class="report-photo" alt="" loading="lazy" hidden />
-            <div class="photo-placeholder" aria-label="No photo available">NO PHOTO</div>
+            <div class="photo-placeholder" aria-label="No photo available">
+              NO PHOTO
+            </div>
             <div class="report-card-content">
               <span class="type-tag"></span>
-              <h2></h2>
-              <p class="report-place"></p>
+              <div class="report-info">
+                <h2></h2>
+                <p class="report-place"></p>
+              </div>
               <p class="report-date"></p>
               <p class="report-detail" hidden></p>
               <button class="claim-button" type="button">This is mine</button>
@@ -120,9 +126,7 @@
       <div>
         <a class="wordmark" href="index.html"
           ><span
-            >LYCEUM RETURNS<small
-              >LPU LAGUNA Â· CAMPUS FOUND ITEMS</small
-            ></span
+            >LYCEUM RETURNS<small>LPU LAGUNA · CAMPUS FOUND ITEMS</small></span
           ></a
         >
         <p>A student-run service for returning belongings around campus.</p>
@@ -141,6 +145,6 @@
     </footer>
     <script src="js/form-config.js?v=5"></script>
     <script src="js/d3-dsv.min.js?v=1"></script>
-    <script type="module" src="js/reports.js?v=21"></script>
+    <script type="module" src="js/reports.js?v=24"></script>
   </body>
 </html>

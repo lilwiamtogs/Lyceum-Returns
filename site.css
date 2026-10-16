@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   --crimson: #881a23;
   --crimson-dark: #64131a;
   --gold: #c69767;
@@ -7,8 +7,11 @@
   --paper: #f4f4f2;
   --white: #ffffff;
   --line: #d8d9da;
-  --heading: "Fraunces", Georgia, serif;
-  --body: "Inter", system-ui, sans-serif;
+  --font-title: "Fraunces", Georgia, serif;
+  --font-text: "Inter", system-ui, sans-serif;
+  --text-base: 100%;
+  --text-small: 87.5%;
+  --text-label: 75%;
   --space: 8px;
 }
 
@@ -22,7 +25,7 @@ body {
   margin: 0;
   background: var(--white);
   color: var(--ink);
-  font: 16px/1.6 var(--body);
+  font: var(--text-base) / 1.6 var(--font-text);
 }
 main {
   padding-bottom: 56px;
@@ -53,7 +56,7 @@ select:focus-visible {
 }
 .wordmark {
   color: var(--crimson);
-  font: 500 22px/1.1 var(--heading);
+  font: 500 22px/1.1 var(--font-title);
   font-variation-settings:
     "SOFT" 20,
     "WONK" 0;
@@ -63,7 +66,7 @@ select:focus-visible {
   display: block;
   margin-top: 3px;
   color: var(--muted);
-  font: 500 10px var(--body);
+  font: 500 10px var(--font-text);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -115,7 +118,7 @@ main {
 }
 .hero h1 {
   margin: 0;
-  font: 500 clamp(44px, 6vw, 76px)/1.15 var(--heading);
+  font: 500 clamp(44px, 6vw, 76px)/1.15 var(--font-title);
   font-variation-settings:
     "SOFT" 20,
     "WONK" 0;
@@ -192,7 +195,7 @@ main {
 }
 .note h2 {
   margin: 0;
-  font: 500 24px/1.25 var(--heading);
+  font: 500 24px/1.25 var(--font-title);
 }
 .note p {
   margin: 12px 0 0;
@@ -330,6 +333,9 @@ main {
   max-width: none;
   padding-bottom: 48px;
 }
+.home-main {
+  padding-bottom: 0;
+}
 .site-header {
   position: sticky;
   top: 0;
@@ -446,7 +452,7 @@ main {
   }
   .site-header .wordmark::after {
     content: "LR";
-    font: 500 21px/1.1 var(--heading);
+    font: 500 21px/1.1 var(--font-title);
     color: var(--crimson);
   }
   .site-header nav {

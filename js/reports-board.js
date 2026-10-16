@@ -1,4 +1,8 @@
-import { bridgeMessage, formatDate, getReportDetails } from "./reports-data.js?v=3";
+import {
+  bridgeMessage,
+  formatDate,
+  getReportDetails,
+} from "./reports-data.js?v=6";
 
 export function initReportBoard() {
   const source = window.LOST_FOUND_REPORTS_CSV_URL;
@@ -75,7 +79,8 @@ export function initReportBoard() {
       const response = await fetch(`${source}${separator}t=${Date.now()}`, {
         cache: "no-store",
       });
-      if (!response.ok) throw new Error("The report feed could not be reached.");
+      if (!response.ok)
+        throw new Error("The report feed could not be reached.");
       records = window.d3.csvParse(await response.text());
       message.hidden = true;
       render();
@@ -163,7 +168,10 @@ export function initReportBoard() {
       claimStatus.textContent = "Sending claim…";
       const onReply = (event) => {
         const reply = bridgeMessage(event);
-        if (reply?.type !== "lost-found-submit" || reply?.nonce !== payload.nonce)
+        if (
+          reply?.type !== "lost-found-submit" ||
+          reply?.nonce !== payload.nonce
+        )
           return;
         window.removeEventListener("message", onReply);
         button.disabled = false;
