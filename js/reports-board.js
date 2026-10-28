@@ -164,6 +164,18 @@ export function initReportBoard() {
       input.value = JSON.stringify(payload);
       postForm.append(input);
       const button = claimForm.querySelector(".submit-button");
+      let replyReceived = false;
+      const onFrameLoad = () => {
+        setTimeout(() => {
+          if (replyReceived) return;
+          replyReceived = true;
+          window.removeEventListener("message", onReply);
+          button.disabled = false;
+          claimStatus.className = "form-status error";
+          claimStatus.textContent =
+            "The claim service did not confirm this request. Its Apps Script deployment needs to be updated.";
+        }, 500);
+      };
       button.disabled = true;
       claimStatus.textContent = "Sending claim…";
       const onReply = (event) => {
@@ -173,6 +185,8 @@ export function initReportBoard() {
           reply?.nonce !== payload.nonce
         )
           return;
+        replyReceived = true;
+        bridgeFrame.removeEventListener("load", onFrameLoad);
         window.removeEventListener("message", onReply);
         button.disabled = false;
         claimStatus.className = `form-status ${reply.success ? "success" : "error"}`;
@@ -181,11 +195,13 @@ export function initReportBoard() {
       };
       window.addEventListener("message", onReply);
       document.body.append(postForm);
+      bridgeFrame.addEventListener("load", onFrameLoad, { once: true });
       postForm.submit();
       setTimeout(() => postForm.remove(), 2000);
       setTimeout(() => {
-        if (!button.disabled) return;
+        if (replyReceived) return;
         window.removeEventListener("message", onReply);
+        bridgeFrame.removeEventListener("load", onFrameLoad);
         button.disabled = false;
         claimStatus.className = "form-status error";
         claimStatus.textContent =
