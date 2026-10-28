@@ -187,15 +187,6 @@ export function initReportBoard() {
         if (!button.disabled) return;
         window.removeEventListener("message", onReply);
         button.disabled = false;
-        claimStatus.className = "form-status success";
-        claimStatus.textContent =
-          "Claim submitted. The campus team will review it and contact you.";
-        setTimeout(() => claimDialog.close(), 1200);
-      }, 1200);
-      setTimeout(() => {
-        if (!button.disabled) return;
-        window.removeEventListener("message", onReply);
-        button.disabled = false;
         claimStatus.className = "form-status error";
         claimStatus.textContent =
           "The claim was submitted, but the page did not receive a confirmation. Check the claims sheet before trying again.";

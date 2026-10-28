@@ -353,16 +353,49 @@ function updateSourceStatus_(claim, status) {
   const locationColumn = headers.findIndex((header) =>
     ["Last seen or found location", "Location"].includes(header),
   );
+  const dateColumn = headers.findIndex((header) =>
+    ["Date lost or found", "Date"].includes(header),
+  );
+  const timestampColumn = headers.findIndex((header) =>
+    ["Timestamp", "Submitted at"].includes(header),
+  );
   const clean = (value) =>
     String(value || "")
       .trim()
       .toLowerCase();
-  const row = data.findIndex(
-    (cells) =>
-      (!claim.Item || clean(cells[itemColumn]) === clean(claim.Item)) &&
-      (!claim.Location ||
-        clean(cells[locationColumn]) === clean(claim.Location)),
-  );
+  const sameDay = (left, right) => {
+    if (!left || !right) return false;
+    const toDay = (value) => {
+      const date = new Date(value);
+      return Number.isNaN(date.getTime())
+        ? clean(value)
+        : Utilities.formatDate(date, Session.getScriptTimeZone(), "yyyy-MM-dd");
+    };
+    return toDay(left) === toDay(right);
+  };
+  const claimTime = new Date(claim["Report key"]).getTime();
+  let row =
+    timestampColumn >= 0 && !Number.isNaN(claimTime)
+      ? data.findIndex((cells) => {
+          const sourceTime = new Date(cells[timestampColumn]).getTime();
+          return (
+            !Number.isNaN(sourceTime) && Math.abs(sourceTime - claimTime) < 1000
+          );
+        })
+      : -1;
+  if (row < 0) {
+    const candidates = data
+      .map((cells, index) => ({ cells, index }))
+      .filter(
+        ({ cells }) =>
+          (!claim.Item || clean(cells[itemColumn]) === clean(claim.Item)) &&
+          (!claim.Location ||
+            clean(cells[locationColumn]) === clean(claim.Location)) &&
+          (!claim.Date || sameDay(cells[dateColumn], claim.Date)),
+      );
+    // A non-unique fallback would risk marking the wrong item as claimed.
+    if (candidates.length === 1) row = candidates[0].index;
+  }
   if (row >= 0) sheet.getRange(row + 2, statusColumn + 1).setValue(status);
 }
 
@@ -382,6 +415,25 @@ function findPosterEmail_(payload) {
     );
     return key ? answers[key] : "";
   };
+  const sameDate = (left, right) => {
+    if (!left || !right) return false;
+    const toDay = (value) => {
+      const date = new Date(value);
+      return Number.isNaN(date.getTime())
+        ? clean(value)
+        : Utilities.formatDate(date, Session.getScriptTimeZone(), "yyyy-MM-dd");
+    };
+    return toDay(left) === toDay(right);
+  };
+  const sameResponseTime = (timestamp, reportKey) => {
+    if (!timestamp || !reportKey) return false;
+    const keyTime = new Date(reportKey).getTime();
+    if (Number.isNaN(keyTime)) return false;
+    // Published Sheets timestamps can be formatted differently, so compare to
+    // the nearest second instead of comparing their display text.
+    return Math.abs(timestamp.getTime() - keyTime) < 1000;
+  };
+  const candidates = [];
   const responses = form.getResponses();
   for (let i = responses.length - 1; i >= 0; i--) {
     const answers = {};
@@ -400,18 +452,24 @@ function findPosterEmail_(payload) {
     const locationMatches =
       !payload.reportLocation ||
       clean(location) === clean(payload.reportLocation);
-    if (itemMatches && locationMatches) {
-      const contact = getAnswer(answers, [
-        "Contact email or phone number",
-        "Your contact email or phone number",
-        "Email address or phone number",
-        "Contact email",
-        "Email",
-      ]);
-      return emailPattern.test(contact) ? contact : "";
-    }
+    const date = getAnswer(answers, ["Date lost or found", "Date"]);
+    const dateMatches =
+      !payload.reportDate || sameDate(date, payload.reportDate);
+    const contact = getAnswer(answers, [
+      "Contact email or phone number",
+      "Your contact email or phone number",
+      "Email address or phone number",
+      "Contact email",
+      "Email",
+    ]);
+    if (!emailPattern.test(contact) || !itemMatches || !locationMatches)
+      continue;
+    if (sameResponseTime(responses[i].getTimestamp(), payload.reportKey))
+      return contact;
+    if (dateMatches) candidates.push(contact);
   }
-  return "";
+  // Do not guess if the same item, location, and date appears more than once.
+  return candidates.length === 1 ? candidates[0] : "";
 }
 
 function validatePayload_(payload) {
