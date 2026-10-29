@@ -52,6 +52,7 @@ function prepareCustomFormBridge() {
         "Claimant contact",
         "Proof",
         "Review status",
+        "Poster email",
       ]);
     claimsId = claims.getId();
     PropertiesService.getScriptProperties().setProperty(
@@ -191,6 +192,10 @@ function saveClaim_(payload) {
   const sheet = SpreadsheetApp.openById(claimsId).getSheets()[0];
   ensureClaimsHeaders_(sheet);
   const token = Utilities.getUuid();
+  // Resolve this while the report information is still available.  Keeping the
+  // result on the claim means approval notifications do not depend on parsing
+  // a public CSV timestamp again later.
+  const posterEmail = findPosterEmail_(payload);
   const values = {
     "Submitted at": new Date(),
     "Report key": payload.reportKey,
@@ -202,10 +207,10 @@ function saveClaim_(payload) {
     Item: payload.reportItem || "",
     Date: payload.reportDate || "",
     Location: payload.reportLocation || "",
+    "Poster email": posterEmail,
   };
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   sheet.appendRow(headers.map((header) => values[header] || ""));
-  const posterEmail = findPosterEmail_(payload);
   if (posterEmail) {
     const base = ScriptApp.getService().getUrl();
     const approve = `${base}?claim=${encodeURIComponent(token)}&decision=approve`;
@@ -260,6 +265,7 @@ function ensureClaimsHeaders_(sheet) {
     "Item",
     "Date",
     "Location",
+    "Poster email",
   ];
   const width = Math.max(sheet.getLastColumn(), 1);
   const headers = sheet.getRange(1, 1, 1, width).getValues()[0];
@@ -400,8 +406,9 @@ function updateSourceStatus_(claim, status) {
 }
 
 function findPosterEmail_(payload) {
-  const form = FormApp.openById(LF_BRIDGE_FORM_ID);
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const storedEmail = String(payload["Poster email"] || "").trim();
+  if (emailPattern.test(storedEmail)) return storedEmail;
   const clean = (value) =>
     String(value || "")
       .trim()
@@ -433,6 +440,18 @@ function findPosterEmail_(payload) {
     // the nearest second instead of comparing their display text.
     return Math.abs(timestamp.getTime() - keyTime) < 1000;
   };
+  const fromSheet = findPosterEmailInResponseSheet_(payload, {
+    clean,
+    sameDate,
+    sameResponseTime,
+    emailPattern,
+  });
+  if (fromSheet) return fromSheet;
+
+  // The form API is retained as a fallback for forms without a destination
+  // sheet.  Most installations have one, and its row values are a more stable
+  // match for the timestamp exposed by the public CSV board.
+  const form = FormApp.openById(LF_BRIDGE_FORM_ID);
   const candidates = [];
   const responses = form.getResponses();
   for (let i = responses.length - 1; i >= 0; i--) {
@@ -470,6 +489,57 @@ function findPosterEmail_(payload) {
   }
   // Do not guess if the same item, location, and date appears more than once.
   return candidates.length === 1 ? candidates[0] : "";
+}
+
+function findPosterEmailInResponseSheet_(payload, helpers) {
+  const destinationId = FormApp.openById(LF_BRIDGE_FORM_ID).getDestinationId();
+  if (!destinationId) return "";
+  const book = SpreadsheetApp.openById(destinationId);
+  const sheet =
+    book.getSheetByName(LF_BRIDGE_STATUS_TAB_NAME) || book.getSheets()[0];
+  if (!sheet || sheet.getLastRow() < 2) return "";
+  const values = sheet.getDataRange().getValues();
+  const headers = values.shift();
+  const indexOf = (names) =>
+    headers.findIndex((header) => names.includes(String(header).trim()));
+  const timestampColumn = indexOf(["Timestamp", "Submitted at"]);
+  const itemColumn = indexOf(["Item name", "Item", "What is the item?"]);
+  const locationColumn = indexOf([
+    "Last seen or found location",
+    "Location",
+  ]);
+  const dateColumn = indexOf(["Date lost or found", "Date"]);
+  const contactColumn = indexOf([
+    "Contact email or phone number",
+    "Your contact email or phone number",
+    "Email address or phone number",
+    "Contact email",
+    "Email",
+  ]);
+  if (contactColumn < 0) return "";
+  const matches = values.filter((cells) => {
+    const contact = String(cells[contactColumn] || "").trim();
+    return (
+      helpers.emailPattern.test(contact) &&
+      (!payload.reportItem ||
+        helpers.clean(cells[itemColumn]) === helpers.clean(payload.reportItem)) &&
+      (!payload.reportLocation ||
+        helpers.clean(cells[locationColumn]) ===
+          helpers.clean(payload.reportLocation))
+    );
+  });
+  const timestampMatch = matches.find((cells) =>
+    timestampColumn >= 0 &&
+    helpers.sameResponseTime(cells[timestampColumn], payload.reportKey),
+  );
+  if (timestampMatch) return String(timestampMatch[contactColumn]).trim();
+  const dateMatches = matches.filter(
+    (cells) =>
+      dateColumn >= 0 && helpers.sameDate(cells[dateColumn], payload.reportDate),
+  );
+  return dateMatches.length === 1
+    ? String(dateMatches[0][contactColumn]).trim()
+    : "";
 }
 
 function validatePayload_(payload) {
