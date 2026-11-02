@@ -8,6 +8,8 @@ const LF_BRIDGE_PHOTO_FOLDER_NAME = "LPU Laguna Lost and Found Photos";
 const LF_BRIDGE_PHOTO_URL_TITLE = "Photo URL (custom upload)";
 const LF_BRIDGE_MAX_PHOTO_BYTES = 2500000;
 const LF_BRIDGE_CLAIMS_NAME = "LPU Laguna Lost and Found Claims";
+// The spreadsheet where claim submissions are recorded.
+const LF_BRIDGE_CLAIMS_SHEET_ID = "1_E-J-9diNZFoRDpxQ9p_As4Ype-Vshiyy0vMcfuWua8";
 // Keep status on the form response/source sheet, not on a formula-driven board tab.
 const LF_BRIDGE_STATUS_SHEET_ID = "USE_FORM_DESTINATION";
 const LF_BRIDGE_STATUS_TAB_NAME = "Form Responses 1";
@@ -40,6 +42,7 @@ function prepareCustomFormBridge() {
     folder.getId(),
   );
   let claimsId =
+    LF_BRIDGE_CLAIMS_SHEET_ID ||
     PropertiesService.getScriptProperties().getProperty("CLAIMS_SHEET_ID");
   if (!claimsId) {
     const claims = SpreadsheetApp.create(LF_BRIDGE_CLAIMS_NAME);
@@ -60,6 +63,10 @@ function prepareCustomFormBridge() {
       claimsId,
     );
   }
+  PropertiesService.getScriptProperties().setProperty(
+    "CLAIMS_SHEET_ID",
+    claimsId,
+  );
   ensureClaimsHeaders_(SpreadsheetApp.openById(claimsId).getSheets()[0]);
   Logger.log("Bridge is ready for form: " + form.getEditUrl());
   Logger.log("Uploaded photos will be stored in: " + folder.getUrl());
@@ -184,6 +191,7 @@ function saveClaim_(payload) {
   )
     throw new Error("Keep the claim details within the field limits.");
   const claimsId =
+    LF_BRIDGE_CLAIMS_SHEET_ID ||
     PropertiesService.getScriptProperties().getProperty("CLAIMS_SHEET_ID");
   if (!claimsId)
     throw new Error(
@@ -277,6 +285,7 @@ function ensureClaimsHeaders_(sheet) {
 
 function decideClaim_(token, decision) {
   const claimsId =
+    LF_BRIDGE_CLAIMS_SHEET_ID ||
     PropertiesService.getScriptProperties().getProperty("CLAIMS_SHEET_ID");
   if (!claimsId) throw new Error("The claims sheet is not configured.");
   const sheet = SpreadsheetApp.openById(claimsId).getSheets()[0];
@@ -609,7 +618,9 @@ function bridgeReply_(nonce, success, message) {
     message: message,
   }).replace(/</g, "\\u003c");
   return HtmlService.createHtmlOutput(
-    "<!doctype html><html><body><script>parent.postMessage(" +
+    // HtmlService renders user HTML inside Google's own sandbox iframe.  The
+    // site's hidden bridge iframe is therefore the grandparent, not parent.
+    "<!doctype html><html><body><script>window.top.postMessage(" +
       result +
       ", '*');</script></body></html>",
   ).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
